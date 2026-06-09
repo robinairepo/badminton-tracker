@@ -88,21 +88,30 @@ function setPlayerStatus({ id, status }) {
 
 // ── Sessions ──────────────────────────────────────────────────
 function saveSession({ date, num_players, cost_type, cost_desc, amount, players }) {
-  const ss   = SpreadsheetApp.getActiveSpreadsheet();
-  const shS  = ss.getSheetByName(SHEET_SESSIONS);
-  const shL  = ss.getSheetByName(SHEET_PLAY_LOG);
-  const per  = players.length > 0 ? (parseFloat(amount) / players.length).toFixed(2) : 0;
+  // Use script lock to prevent duplicate writes from rapid calls
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss   = SpreadsheetApp.getActiveSpreadsheet();
+    const shS  = ss.getSheetByName(SHEET_SESSIONS);
+    const shL  = ss.getSheetByName(SHEET_PLAY_LOG);
+    const per  = players.length > 0 ? (parseFloat(amount) / players.length).toFixed(2) : 0;
 
-  deleteSessionByDate(ss, date);
+    // Delete ALL existing rows for this date before writing
+    deleteSessionByDate(ss, date);
 
-  const sid = "S" + Date.now();
-  shS.appendRow([sid, date, num_players, cost_type, cost_desc, parseFloat(amount), parseFloat(per)]);
+    const sid = "S" + Date.now();
+    shS.appendRow([sid, date, num_players, cost_type, cost_desc, parseFloat(amount), parseFloat(per)]);
 
-  players.forEach(pid => {
-    shL.appendRow(["L" + Date.now() + Math.random().toString(36).slice(2), sid, pid, parseFloat(per)]);
-  });
+    players.forEach(pid => {
+      shL.appendRow(["L" + Date.now() + Math.random().toString(36).slice(2), sid, pid, parseFloat(per)]);
+    });
 
-  return ok({ session_id: sid, date, per_head: per });
+    SpreadsheetApp.flush();
+    return ok({ session_id: sid, date, per_head: per });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function deleteSessionByDate(ss, date) {
