@@ -348,7 +348,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       <div class="card">
         <div class="form-row">
           <label>Date</label>
-          <input type="date" id="att-date" onchange="loadSession()" />
+          <input type="date" id="att-date" onchange="onDateChange()" />
         </div>
 
         <div class="form-row">
@@ -670,7 +670,8 @@ async function togglePlayer(id, newStatus) {
 function initAttendance() {
   document.getElementById("att-date").value = todayIST();
   updateNumPlayersDropdown();
-  updateAttPlayerList();
+  // Note: updateAttPlayerList + loadSession called together by switchTab
+  // to guarantee checkboxes exist before session data is applied
 }
 
 function updateNumPlayersDropdown() {
@@ -732,10 +733,17 @@ function calcPerHead() {
   }
 }
 
+async function onDateChange() {
+  // When user manually changes date: rebuild checkboxes then load session
+  updateAttPlayerList();
+  await loadSession();
+}
+
 async function loadSession() {
   const date = document.getElementById("att-date").value;
   if (!date) return;
-  // Reset form
+
+  // Reset form fields only — do NOT rebuild the player checkbox list
   document.getElementById("att-amount").value = "";
   document.getElementById("att-num-players").value = "";
   document.getElementById("att-other-desc").value = "";
@@ -743,14 +751,16 @@ async function loadSession() {
   document.getElementById("per-head-box").style.display = "none";
   document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
   document.querySelector(".pill[data-type='Court']").classList.add("selected");
+  // Uncheck existing checkboxes — never rebuild them here
   document.querySelectorAll("#att-players-list input[type=checkbox]").forEach(c => c.checked = false);
+  document.getElementById("att-all-btn").textContent = "Select All";
 
   showLoader(true);
   try {
     const session = await api("getSession", { date });
     if (session) {
-      document.getElementById("att-amount").value       = session.amount;
-      document.getElementById("att-num-players").value  = session.num_players;
+      document.getElementById("att-amount").value      = session.amount;
+      document.getElementById("att-num-players").value = session.num_players;
 
       document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
       const matchPill = document.querySelector(`.pill[data-type="${session.cost_type}"]`);
@@ -760,7 +770,7 @@ async function loadSession() {
         document.getElementById("att-other-desc").value = session.cost_desc || "";
       }
 
-      // ✅ Fix: restore previously selected players
+      // Restore checked players — checkboxes already exist in DOM, just tick them
       (session.players || []).forEach(pid => {
         const cb = document.getElementById(`att-chk-${pid}`);
         if (cb) cb.checked = true;
@@ -1021,7 +1031,7 @@ function exportCSV(rows, groupExp, from, to) {
 // ══════════════════════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════════════════════
-function switchTab(btn) {
+async function switchTab(btn) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   btn.classList.add("active");
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -1030,8 +1040,8 @@ function switchTab(btn) {
 
   if (btn.dataset.screen === "attendance") {
     updateNumPlayersDropdown();
-    updateAttPlayerList();
-    loadSession();
+    updateAttPlayerList();   // build checkboxes first (sync)
+    await loadSession();     // then load & apply session data (async) — guaranteed order
   }
   if (btn.dataset.screen === "expenses") {
     updateExpPlayerList();
