@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shuttle">
+<meta name="theme-color" content="#1c1f2e">
+<link rel="manifest" href="manifest.json">
+<title>Shuttle Tracker</title>
+<style>
+/* ══════════════════════════════════════════
+   DESIGN TOKENS  — warmer dark with better contrast
+══════════════════════════════════════════ */
+:root {
+  --bg:        #1c1f2e;
+  --surface:   #252838;
+  --card:      #2d3147;
+  --card2:     #323654;
+  --border:    #3d4260;
+  --accent:    #5eead4;   /* teal — primary actions */
+  --accent2:   #fb923c;   /* orange — amounts/money */
+  --accent3:   #a78bfa;   /* purple — weekend highlight */
+  --text:      #f0f0f8;
+  --text2:     #c4c6d8;
+  --muted:     #7b7fa0;
+  --danger:    #f87171;
+  --success:   #4ade80;
+  --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+  --radius:    14px;
+  --radius-sm: 8px;
+  --tab-h:     60px;
+  --header-h:  56px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { font-size: 15px; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); height: 100dvh; overflow: hidden; }
+
+/* ── Layout shells ── */
+#app { display: flex; flex-direction: column; height: 100dvh; }
+
+#header {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 11px;
+  padding: 0 16px; flex-shrink: 0;
+}
+#header .logo { font-size: 24px; }
+#header h1 { font-size: 17px; font-weight: 700; color: var(--text); }
+#header .sub { font-size: 11px; color: var(--muted); }
+
+#content {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 14px 14px calc(var(--tab-h) + 8px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tab bar */
+#tabs {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--tab-h);
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 100;
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px;
+  font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; background: none; border: none;
+  transition: color .15s;
+}
+.tab .icon { font-size: 21px; line-height: 1; }
+.tab.active { color: var(--accent); }
+
+/* Screens */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── Typography helpers ── */
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 10px;
+}
+.page-title {
+  font-size: 19px; font-weight: 700; color: var(--text);
+  margin-bottom: 14px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+}
+.card-inner {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px; margin-top: 10px;
+}
+.card.teal-glow  { border-color: rgba(94,234,212,.35); }
+.card.orange-glow{ border-color: rgba(251,146,60,.35); }
+
+/* ── Forms ── */
+.form-row { margin-bottom: 12px; }
+.form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+label, .field-label {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: .4px; color: var(--muted);
+  margin-bottom: 5px; text-transform: uppercase;
+}
+input[type="text"], input[type="number"], input[type="url"], input[type="date"], select, textarea {
+  width: 100%; background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-family: var(--font); font-size: 14px;
+  padding: 10px 12px; outline: none; transition: border-color .2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input[type="date"] { color-scheme: dark; }
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237b7fa0' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+/* ── Buttons ── */
+.btn {
+  border: none; border-radius: var(--radius-sm); font-family: var(--font);
+  font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: .3px;
+  padding: 10px 16px; transition: opacity .15s, transform .1s; display: inline-flex;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.btn:active { transform: scale(.96); opacity: .85; }
+.btn-primary  { background: var(--accent);  color: #1c1f2e; }
+.btn-orange   { background: var(--accent2); color: #1c1f2e; }
+.btn-danger   { background: var(--danger);  color: #1c1f2e; }
+.btn-ghost    { background: var(--card2);   color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost2   { background: transparent;   color: var(--muted);  border: 1px solid var(--border); }
+.btn-sm       { padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+.btn-full     { width: 100%; }
+
+/* ── Cost type pills ── */
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+  border: 1.5px solid var(--border); cursor: pointer; background: none;
+  color: var(--muted); letter-spacing: .3px; transition: all .15s;
+}
+.pill.selected { border-color: var(--accent); color: var(--accent); background: rgba(94,234,212,.1); }
+
+/* ── Player rows ── */
+.player-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.player-row:last-child { border-bottom: none; }
+
+/* Avatar — always 2 letters */
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.av-active   { background: linear-gradient(135deg, var(--accent), #38bdf8); color: #1c1f2e; }
+.av-inactive { background: var(--border); color: var(--muted); }
+
+.player-info { flex: 1; min-width: 0; }
+.player-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.player-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.badge { padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .5px; }
+.badge-active   { background: rgba(94,234,212,.15); color: var(--accent); }
+.badge-inactive { background: rgba(248,113,113,.15); color: var(--danger); }
+
+/* ── 2-column checkbox grid ── */
+.check-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.check-item {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px 10px; cursor: pointer;
+  transition: border-color .15s;
+}
+.check-item:has(input:checked) { border-color: var(--accent); background: rgba(94,234,212,.07); }
+.check-item input[type="checkbox"] {
+  width: 17px; height: 17px; min-width: 17px;
+  accent-color: var(--accent); cursor: pointer;
+  background: var(--surface); border: none; padding: 0; margin: 0;
+}
+.check-item .cl { font-size: 13px; font-weight: 600; color: var(--text2); line-height: 1.2; }
+
+/* ── Per-head display ── */
+.per-head-box {
+  background: rgba(94,234,212,.08); border: 1.5px solid rgba(94,234,212,.3);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px;
+}
+.per-head-box .label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+.per-head-box .value { font-size: 22px; font-weight: 800; color: var(--accent); }
+
+/* ── Expense cards ── */
+.exp-card { }
+.exp-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.exp-desc { font-size: 14px; font-weight: 600; color: var(--text); }
+.exp-date { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.exp-amt  { font-size: 20px; font-weight: 800; color: var(--accent2); }
+.exp-players { font-size: 12px; color: var(--text2); margin-top: 7px; }
+
+/* ── Report table ── */
+.rtable-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.rtable { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 320px; }
+.rtable th {
+  background: var(--card2); padding: 9px 8px;
+  text-align: left; font-size: 10px; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--muted); white-space: nowrap;
+}
+.rtable td { padding: 9px 8px; border-top: 1px solid var(--border); }
+.rtable tr:hover td { background: rgba(255,255,255,.02); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.c-teal   { color: var(--accent);  font-weight: 700; }
+.c-orange { color: var(--accent2); font-weight: 700; }
+.c-purple { color: var(--accent3); }
+
+/* ── Summary stat boxes ── */
+.stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; }
+.stat-box .s-label { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 4px; }
+.stat-box .s-val   { font-size: 22px; font-weight: 800; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: calc(var(--tab-h) + 14px); left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--card2); border: 1px solid var(--accent);
+  color: var(--text); padding: 10px 20px; border-radius: 24px;
+  font-size: 13px; font-weight: 600; opacity: 0;
+  transition: all .25s; pointer-events: none; white-space: nowrap;
+  z-index: 999; max-width: 90vw;
+}
+#toast.show  { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.error { border-color: var(--danger); color: var(--danger); }
+
+/* ── Loader ── */
+#loader {
+  position: fixed; inset: 0; background: rgba(28,31,46,.8);
+  display: none; align-items: center; justify-content: center; z-index: 1000;
+}
+.spinner {
+  width: 38px; height: 38px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Config screen ── */
+#config-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 28px; z-index: 500;
+}
+.cfg-logo { font-size: 64px; margin-bottom: 16px; }
+.cfg-title { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+.cfg-sub   { color: var(--muted); font-size: 13px; text-align: center; line-height: 1.7; margin-bottom: 24px; max-width: 320px; }
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.row-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+/* ── Empty states ── */
+.empty { text-align: center; padding: 36px 20px; color: var(--muted); }
+.empty .ei { font-size: 38px; margin-bottom: 10px; }
+.empty p { font-size: 13px; line-height: 1.6; }
+
+/* ── Inline add form ── */
+#add-player-form {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+  display: none;
+}
+
+/* ── Section separators in reports ── */
+.report-section-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--accent);
+  padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<!-- Config screen -->
+<div id="config-screen">
+  <div class="cfg-logo">🏸</div>
+  <div class="cfg-title">Shuttle Tracker</div>
+  <p class="cfg-sub">Paste your Google Apps Script Web App URL to connect your Google Sheet.</p>
+  <div style="width:100%;max-width:360px">
+    <label>Apps Script Web App URL</label>
+    <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/..." style="margin-bottom:10px" />
+    <button class="btn btn-primary btn-full" onclick="saveConfig()">Connect & Setup →</button>
+    <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">See SETUP_GUIDE for instructions</p>
+  </div>
+</div>
+
+<!-- Loader -->
+<div id="loader" style="display:none;"><div class="spinner"></div></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- App shell -->
+<div id="app" style="display:none">
+  <div id="header">
+    <div class="logo">🏸</div>
+    <div>
+      <div id="h1">Shuttle Tracker</div>
+      <div class="sub" id="header-sub">Loading…</div>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ════════════ PLAYERS ════════════ -->
+    <div id="screen-players" class="screen active">
+      <div class="row-between">
+        <div class="page-title" style="margin-bottom:0">Players</div>
+        <button class="btn btn-primary btn-sm" onclick="toggleAddForm()">+ Add Player</button>
+      </div>
+
+      <div id="add-player-form" style="margin-top:12px">
+        <label>Player Name</label>
+        <input type="text" id="new-player-name" placeholder="Full name" style="margin-bottom:10px" />
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="addPlayer()">Save</button>
+          <button class="btn btn-ghost btn-sm"   onclick="toggleAddForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div id="player-list" style="margin-top:14px"></div>
+    </div>
+
+    <!-- ════════════ ATTENDANCE ════════════ -->
+    <div id="screen-attendance" class="screen">
+      <div class="page-title">Attendance</div>
+
+      <div class="card">
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" id="att-date" onchange="loadSession()" />
+        </div>
+
+        <div class="form-row">
+          <label>Cost Type</label>
+          <div class="pills">
+            <button class="pill selected" data-type="Court"   onclick="selectPill(this)">🏟 Court</button>
+            <button class="pill"          data-type="Shuttle" onclick="selectPill(this)">🏸 Shuttle</button>
+            <button class="pill"          data-type="Other"   onclick="selectPill(this)">📝 Other</button>
+          </div>
+        </div>
+
+        <div class="form-row" id="other-desc-row" style="display:none">
+          <label>Description</label>
+          <input type="text" id="att-other-desc" placeholder="Reason for expense" />
+        </div>
+
+        <div class="form-2col">
+          <div>
+            <label>Amount (₹)</label>
+            <input type="number" id="att-amount" placeholder="0" min="0" oninput="calcPerHead()" />
+          </div>
+          <div>
+            <label>Player Count</label>
+            <select id="att-num-players" onchange="calcPerHead()">
+              <option value="">—</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="per-head-box" id="per-head-box" style="display:none">
+          <span class="label">Per Head</span>
+          <span class="value" id="per-head-amt">₹0</span>
+        </div>
+      </div>
+
+      <div class="row-between" style="margin-top:4px">
+        <div class="section-label" style="margin-bottom:0">Who Played</div>
+        <button class="btn btn-ghost2 btn-sm" id="att-all-btn" onclick="toggleAllAtt()">Select All</button>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="check-grid" id="att-players-list"></div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="saveSession()">💾 Save Session</button>
+    </div>
+
+    <!-- ════════════ EXPENSES ════════════ -->
+    <div id="screen-expenses" class="screen">
+      <div class="page-title">Expenses</div>
+
+      <div class="section-label">Add Expense</div>
+      <div class="card">
+        <div class="form-2col">
+          <div>
+            <label>Date</label>
+            <input type="date" id="exp-date" />
+          </div>
+          <div>
+            <label>Amount (₹)</label>
+            <input type="number" id="exp-amount" placeholder="0" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <input type="text" id="exp-desc" placeholder="e.g. Extra shuttles" />
+        </div>
+
+        <div class="form-row">
+          <label>Expense Type</label>
+          <div class="pills">
+            <button class="pill selected" data-scope="player" onclick="selectExpScope(this)">👤 Split among players</button>
+            <button class="pill"          data-scope="group"  onclick="selectExpScope(this)">👥 Group (undivided)</button>
+          </div>
+        </div>
+
+        <div id="exp-player-section">
+          <div class="row-between" style="margin-bottom:6px">
+            <label style="margin-bottom:0">Applicable Players</label>
+            <button class="btn btn-ghost2 btn-sm" id="exp-all-btn" onclick="toggleAllExp()">Select All</button>
+          </div>
+          <div class="check-grid" id="exp-players-list"></div>
+        </div>
+
+        <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="saveExpense()">Add Expense</button>
+      </div>
+
+      <div class="section-label" style="margin-top:4px">Recent (Last 30 Days)</div>
+      <div id="expense-history"></div>
+    </div>
+
+    <!-- ════════════ REPORTS ════════════ -->
+    <div id="screen-reports" class="screen">
+      <div class="page-title">Reports</div>
+
+      <div class="card">
+        <div class="form-2col">
+          <div>
+            <label>From</label>
+            <input type="date" id="rep-from" />
+          </div>
+          <div>
+            <label>To</label>
+            <input type="date" id="rep-to" />
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="generateReport()">Generate Report</button>
+      </div>
+
+      <div id="report-output"></div>
+    </div>
+
+  </div><!-- end #content -->
+
+  <div id="tabs">
+    <button class="tab active" data-screen="players"    onclick="switchTab(this)"><span class="icon">👥</span>Players</button>
+    <button class="tab"        data-screen="attendance" onclick="switchTab(this)"><span class="icon">📅</span>Attend</button>
+    <button class="tab"        data-screen="expenses"   onclick="switchTab(this)"><span class="icon">💰</span>Expenses</button>
+    <button class="tab"        data-screen="reports"    onclick="switchTab(this)"><span class="icon">📊</span>Reports</button>
+  </div>
+</div><!-- end #app -->
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let API_URL = localStorage.getItem("bt_api_url") || "";
+let players = [];  // sorted alphabetically always
+
+// ══════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════
+window.onload = async () => {
+  // Register SW
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
+  if (!API_URL) return; // show config screen
+
+  document.getElementById("config-screen").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  await loadPlayers();
+  initAttendance();
+  initExpenses();
+  initReports();
+};
+
+// ══════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════
+async function saveConfig() {
+  const url = document.getElementById("cfg-url").value.trim();
+  if (!url.startsWith("https://")) return showToast("Enter a valid HTTPS URL", true);
+  API_URL = url;
+  localStorage.setItem("bt_api_url", url);
+  showLoader(true);
+  try {
+    await api("setup", {});
+    document.getElementById("config-screen").style.display = "none";
+    document.getElementById("app").style.display = "flex";
+    await loadPlayers();
+    initAttendance(); initExpenses(); initReports();
+    showToast("Connected! Sheets ready ✓");
+  } catch(e) {
+    showToast("Failed: " + e.message, true);
+  }
+  showLoader(false);
+}
+
+// ══════════════════════════════════════════════════════
+//  API
+// ══════════════════════════════════════════════════════
+async function api(action, payload) {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({ action, payload })
+  });
+  const data = await res.json();
+  if (data.status !== "ok") throw new Error(data.message || "API error");
+  return data.data;
+}
+
+// ══════════════════════════════════════════════════════
+//  DATE HELPERS
+// ══════════════════════════════════════════════════════
+function todayIST() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  return ist.toISOString().slice(0, 10);
+}
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
+
+// ══════════════════════════════════════════════════════
+//  PLAYERS
+// ══════════════════════════════════════════════════════
+function sortPlayers(arr) {
+  return [...arr].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function loadPlayers() {
+  showLoader(true);
+  try {
+    const raw = await api("getPlayers", {});
+    players = sortPlayers(raw);
+    renderPlayers();
+    updateAttPlayerList();
+    updateExpPlayerList();
+    updateHeader();
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+function updateHeader() {
+  const active = players.filter(p => p.status === "active").length;
+  document.getElementById("header-sub").textContent = `${active} active players`;
+}
+
+function initials(name) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return (parts[0].slice(0, 2)).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderPlayers() {
+  const el = document.getElementById("player-list");
+  const active   = players.filter(p => p.status === "active");
+  const inactive = players.filter(p => p.status === "inactive");
+
+  if (active.length === 0 && inactive.length === 0) {
+    el.innerHTML = `<div class="empty"><div class="ei">👤</div><p>No players yet.<br>Tap <b>+ Add Player</b> to get started.</p></div>`;
+    return;
+  }
+
+  let html = "";
+  if (active.length > 0) {
+    html += `<div class="section-label">Active (${active.length})</div>`;
+    html += `<div class="card" style="padding:4px 14px">` + active.map(p => playerRowHTML(p)).join("") + `</div>`;
+  }
+  if (inactive.length > 0) {
+    html += `<div class="section-label" style="margin-top:14px">Inactive (${inactive.length})</div>`;
+    html += `<div class="card" style="padding:4px 14px">` + inactive.map(p => playerRowHTML(p)).join("") + `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function playerRowHTML(p) {
+  const av      = initials(p.name);
+  const isActive = p.status === "active";
+  const dateStr  = isActive ? `Added ${fmtDate(p.added_date)}` : `Deactivated ${fmtDate(p.deactivated_date)}`;
+  const btnLabel = isActive ? "Deactivate" : "Reactivate";
+  const btnCls   = isActive ? "btn-danger" : "btn-ghost";
+  const newStatus= isActive ? "inactive" : "active";
+  const avCls    = isActive ? "av-active" : "av-inactive";
+  return `<div class="player-row">
+    <div class="avatar ${avCls}">${av}</div>
+    <div class="player-info">
+      <div class="player-name">${p.name}</div>
+      <div class="player-meta">${dateStr}</div>
+    </div>
+    <span class="badge badge-${p.status}">${p.status}</span>
+    <button class="btn btn-sm ${btnCls}" onclick="togglePlayer('${p.id}','${newStatus}')">${btnLabel}</button>
+  </div>`;
+}
+
+let addFormOpen = false;
+function toggleAddForm() {
+  addFormOpen = !addFormOpen;
+  document.getElementById("add-player-form").style.display = addFormOpen ? "block" : "none";
+  if (addFormOpen) document.getElementById("new-player-name").focus();
+  else document.getElementById("new-player-name").value = "";
+}
+
+async function addPlayer() {
+  const name = document.getElementById("new-player-name").value.trim();
+  if (!name) return showToast("Enter a name", true);
+  showLoader(true);
+  try {
+    const p = await api("addPlayer", { name });
+    players = sortPlayers([...players, p]);
+    renderPlayers();
+    updateAttPlayerList();
+    updateExpPlayerList();
+    updateHeader();
+    toggleAddForm();
+    showToast(`${name} added ✓`);
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+async function togglePlayer(id, newStatus) {
+  showLoader(true);
+  try {
+    await api("setPlayerStatus", { id, status: newStatus });
+    const p = players.find(x => x.id === id);
+    if (p) {
+      p.status = newStatus;
+      if (newStatus === "inactive") p.deactivated_date = todayIST();
+      else p.deactivated_date = "";
+    }
+    renderPlayers();
+    updateAttPlayerList();
+    updateExpPlayerList();
+    updateHeader();
+    showToast(newStatus === "inactive" ? "Player deactivated" : "Player reactivated");
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+// ══════════════════════════════════════════════════════
+//  ATTENDANCE
+// ══════════════════════════════════════════════════════
+function initAttendance() {
+  document.getElementById("att-date").value = todayIST();
+  updateNumPlayersDropdown();
+  updateAttPlayerList();
+}
+
+function updateNumPlayersDropdown() {
+  const active = players.filter(p => p.status === "active");
+  const sel = document.getElementById("att-num-players");
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">—</option>`;
+  for (let i = 1; i <= active.length; i++) {
+    sel.innerHTML += `<option value="${i}" ${String(i) === cur ? "selected" : ""}>${i}</option>`;
+  }
+}
+
+function updateAttPlayerList() {
+  const active = players.filter(p => p.status === "active");
+  const el = document.getElementById("att-players-list");
+  if (active.length === 0) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px">No active players</div>`;
+    return;
+  }
+  el.innerHTML = active.map(p => `
+    <label class="check-item">
+      <input type="checkbox" id="att-chk-${p.id}" value="${p.id}" onchange="onAttCheckChange()">
+      <span class="cl">${p.name}</span>
+    </label>`).join("");
+}
+
+function onAttCheckChange() {
+  const checked = document.querySelectorAll("#att-players-list input:checked").length;
+  if (checked > 0) document.getElementById("att-num-players").value = checked;
+  calcPerHead();
+  // Update Select All button text
+  const total = document.querySelectorAll("#att-players-list input").length;
+  document.getElementById("att-all-btn").textContent = checked === total ? "Deselect All" : "Select All";
+}
+
+function toggleAllAtt() {
+  const checkboxes = document.querySelectorAll("#att-players-list input[type=checkbox]");
+  const allChecked = [...checkboxes].every(c => c.checked);
+  checkboxes.forEach(c => { c.checked = !allChecked; });
+  onAttCheckChange();
+}
+
+function selectPill(btn) {
+  document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  document.getElementById("other-desc-row").style.display = btn.dataset.type === "Other" ? "block" : "none";
+}
+
+function calcPerHead() {
+  const amt = parseFloat(document.getElementById("att-amount").value) || 0;
+  const n   = parseInt(document.getElementById("att-num-players").value) || 0;
+  const per = (amt > 0 && n > 0) ? (amt / n).toFixed(2) : 0;
+  const box = document.getElementById("per-head-box");
+  if (per > 0) {
+    box.style.display = "flex";
+    document.getElementById("per-head-amt").textContent = `₹${per}`;
+  } else {
+    box.style.display = "none";
+  }
+}
+
+async function loadSession() {
+  const date = document.getElementById("att-date").value;
+  if (!date) return;
+  // Reset form
+  document.getElementById("att-amount").value = "";
+  document.getElementById("att-num-players").value = "";
+  document.getElementById("att-other-desc").value = "";
+  document.getElementById("other-desc-row").style.display = "none";
+  document.getElementById("per-head-box").style.display = "none";
+  document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
+  document.querySelector(".pill[data-type='Court']").classList.add("selected");
+  document.querySelectorAll("#att-players-list input[type=checkbox]").forEach(c => c.checked = false);
+
+  showLoader(true);
+  try {
+    const session = await api("getSession", { date });
+    if (session) {
+      document.getElementById("att-amount").value       = session.amount;
+      document.getElementById("att-num-players").value  = session.num_players;
+
+      document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
+      const matchPill = document.querySelector(`.pill[data-type="${session.cost_type}"]`);
+      if (matchPill) matchPill.classList.add("selected");
+      if (session.cost_type === "Other") {
+        document.getElementById("other-desc-row").style.display = "block";
+        document.getElementById("att-other-desc").value = session.cost_desc || "";
+      }
+
+      // ✅ Fix: restore previously selected players
+      (session.players || []).forEach(pid => {
+        const cb = document.getElementById(`att-chk-${pid}`);
+        if (cb) cb.checked = true;
+      });
+      calcPerHead();
+      onAttCheckChange();
+    }
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+async function saveSession() {
+  const date       = document.getElementById("att-date").value;
+  const amount     = document.getElementById("att-amount").value;
+  const num_players= document.getElementById("att-num-players").value;
+  if (!date)        return showToast("Pick a date", true);
+  if (!amount)      return showToast("Enter amount", true);
+  if (!num_players) return showToast("Select player count", true);
+
+  const cost_type  = document.querySelector(".pill[data-type].selected")?.dataset.type || "Court";
+  const cost_desc  = cost_type === "Other" ? document.getElementById("att-other-desc").value : cost_type;
+  const chosenPids = [...document.querySelectorAll("#att-players-list input:checked")].map(c => c.value);
+  if (chosenPids.length === 0) return showToast("Select at least one player", true);
+
+  showLoader(true);
+  try {
+    await api("saveSession", { date, num_players, cost_type, cost_desc, amount, players: chosenPids });
+    showToast("Session saved ✓");
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+// ══════════════════════════════════════════════════════
+//  EXPENSES
+// ══════════════════════════════════════════════════════
+function initExpenses() {
+  document.getElementById("exp-date").value = todayIST();
+  updateExpPlayerList();
+  loadRecentExpenses();
+}
+
+function updateExpPlayerList() {
+  const active = players.filter(p => p.status === "active");
+  const el = document.getElementById("exp-players-list");
+  el.innerHTML = active.map(p => `
+    <label class="check-item">
+      <input type="checkbox" id="exp-chk-${p.id}" value="${p.id}" onchange="onExpCheckChange()">
+      <span class="cl">${p.name}</span>
+    </label>`).join("") || `<div style="color:var(--muted);font-size:13px">No active players</div>`;
+}
+
+function onExpCheckChange() {
+  const checked = document.querySelectorAll("#exp-players-list input:checked").length;
+  const total   = document.querySelectorAll("#exp-players-list input").length;
+  document.getElementById("exp-all-btn").textContent = checked === total ? "Deselect All" : "Select All";
+}
+
+function toggleAllExp() {
+  const checkboxes = document.querySelectorAll("#exp-players-list input[type=checkbox]");
+  const allChecked = [...checkboxes].every(c => c.checked);
+  checkboxes.forEach(c => { c.checked = !allChecked; });
+  onExpCheckChange();
+}
+
+function selectExpScope(btn) {
+  document.querySelectorAll(".pill[data-scope]").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  document.getElementById("exp-player-section").style.display =
+    btn.dataset.scope === "group" ? "none" : "block";
+}
+
+async function saveExpense() {
+  const date   = document.getElementById("exp-date").value;
+  const amount = document.getElementById("exp-amount").value;
+  const desc   = document.getElementById("exp-desc").value.trim();
+  const scope  = document.querySelector(".pill[data-scope].selected")?.dataset.scope || "player";
+  const pids   = scope === "group"
+    ? []
+    : [...document.querySelectorAll("#exp-players-list input:checked")].map(c => c.value);
+
+  if (!date)   return showToast("Pick a date", true);
+  if (!amount) return showToast("Enter amount", true);
+  if (!desc)   return showToast("Enter description", true);
+  if (scope === "player" && pids.length === 0) return showToast("Select at least one player", true);
+
+  showLoader(true);
+  try {
+    await api("saveExpense", { date, amount, description: desc, player_ids: pids, expense_scope: scope });
+    document.getElementById("exp-amount").value = "";
+    document.getElementById("exp-desc").value   = "";
+    document.querySelectorAll("#exp-players-list input").forEach(c => c.checked = false);
+    showToast("Expense saved ✓");
+    loadRecentExpenses();
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+async function loadRecentExpenses() {
+  const to   = todayIST();
+  const dt   = new Date(new Date().getTime() + 5.5*3600000);
+  dt.setDate(dt.getDate() - 30);
+  const from = dt.toISOString().slice(0,10);
+  try {
+    const exps = await api("getExpenses", { from, to });
+    const el = document.getElementById("expense-history");
+    if (!exps || exps.length === 0) {
+      el.innerHTML = `<div class="empty"><div class="ei">💸</div><p>No expenses in last 30 days</p></div>`;
+      return;
+    }
+    const sorted = [...exps].sort((a, b) => b.date.localeCompare(a.date));
+    el.innerHTML = sorted.map(e => {
+      const names = e.player_ids.map(id => {
+        const p = players.find(x => x.id === id);
+        return p ? p.name : "?";
+      }).join(", ");
+      const scopeLabel = e.expense_scope === "group"
+        ? `<span style="color:var(--accent3)">👥 Group expense</span>`
+        : `<span style="color:var(--text2)">👤 ${names}</span>`;
+      return `<div class="card exp-card">
+        <div class="exp-header">
+          <div>
+            <div class="exp-desc">${e.description}</div>
+            <div class="exp-date">${fmtDate(e.date)}</div>
+          </div>
+          <div class="exp-amt">₹${parseFloat(e.amount).toLocaleString('en-IN')}</div>
+        </div>
+        <div class="exp-players">${scopeLabel}</div>
+      </div>`;
+    }).join("");
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════
+//  REPORTS
+// ══════════════════════════════════════════════════════
+function initReports() {
+  const to  = todayIST();
+  const dt  = new Date(new Date().getTime() + 5.5*3600000);
+  const from= new Date(dt.getFullYear(), dt.getMonth(), 1).toISOString().slice(0,10);
+  document.getElementById("rep-from").value = from;
+  document.getElementById("rep-to").value   = to;
+}
+
+async function generateReport() {
+  const from = document.getElementById("rep-from").value;
+  const to   = document.getElementById("rep-to").value;
+  if (!from || !to) return showToast("Set date range", true);
+
+  showLoader(true);
+  try {
+    const result = await api("getReport", { from, to });
+    renderReport(result, from, to);
+  } catch(e) { showToast(e.message, true); }
+  showLoader(false);
+}
+
+function renderReport(result, from, to) {
+  const el = document.getElementById("report-output");
+  const { players: rows, group_expenses } = result;
+  const active = rows.filter(r => r.weekday_sessions > 0 || r.weekend_sessions > 0);
+
+  if (active.length === 0 && (!group_expenses || group_expenses.length === 0)) {
+    el.innerHTML = `<div class="empty"><div class="ei">📊</div><p>No data for this period</p></div>`;
+    return;
+  }
+
+  const totalSession = active.reduce((s, r) => s + r.weekday_cost + r.weekend_cost, 0);
+  const totalGroup   = (group_expenses || []).reduce((s, e) => s + e.amount, 0);
+  const grandTotal   = totalSession + totalGroup;
+
+  let html = `
+    <div class="stat-row">
+      <div class="stat-box"><div class="s-label">Period</div><div style="font-size:13px;font-weight:700;color:var(--text)">${fmtDate(from)} – ${fmtDate(to)}</div></div>
+      <div class="stat-box"><div class="s-label">Group Total</div><div class="s-val c-orange">₹${grandTotal.toLocaleString('en-IN')}</div></div>
+    </div>`;
+
+  // ── Section 1: Player-wise attendance + cost
+  if (active.length > 0) {
+    const sorted = [...active].sort((a, b) => a.name.localeCompare(b.name));
+    html += `<div class="report-section-title">Player Summary</div>`;
+    html += `<div class="rtable-wrap"><table class="rtable">
+      <thead><tr>
+        <th>Player</th>
+        <th class="num">WD</th>
+        <th class="num">WE</th>
+        <th class="num">WD ₹</th>
+        <th class="num">WE ₹</th>
+        <th class="num">Total ₹</th>
+      </tr></thead><tbody>`;
+    sorted.forEach(r => {
+      const total = r.weekday_cost + r.weekend_cost;
+      html += `<tr>
+        <td style="font-weight:600">${r.name}</td>
+        <td class="num">${r.weekday_sessions}</td>
+        <td class="num c-purple">${r.weekend_sessions}</td>
+        <td class="num c-teal">${r.weekday_cost.toFixed(0)}</td>
+        <td class="num c-purple">${r.weekend_cost.toFixed(0)}</td>
+        <td class="num c-orange">${total.toFixed(0)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // ── Section 2: Incidental player expenses — pulled from play log costs vs session costs
+  // (Already baked into player totals, show a note)
+  html += `<div class="report-section-title" style="margin-top:14px">Group Expenses (Unallocated)</div>`;
+  if (!group_expenses || group_expenses.length === 0) {
+    html += `<div class="card"><p style="color:var(--muted);font-size:13px">No group expenses in this period</p></div>`;
+  } else {
+    let grpTotal = 0;
+    html += `<div class="rtable-wrap"><table class="rtable">
+      <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody>`;
+    group_expenses.sort((a,b) => a.date.localeCompare(b.date)).forEach(e => {
+      grpTotal += e.amount;
+      html += `<tr>
+        <td>${fmtDate(e.date)}</td>
+        <td>${e.description}</td>
+        <td class="num c-orange">₹${e.amount.toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+    html += `<tr style="background:var(--card2)">
+      <td colspan="2" style="font-weight:700">Total</td>
+      <td class="num c-orange" style="font-weight:800">₹${grpTotal.toLocaleString('en-IN')}</td>
+    </tr>`;
+    html += `</tbody></table></div>`;
+  }
+
+  // ── Export button
+  html += `<button class="btn btn-ghost btn-full" style="margin-top:14px"
+    onclick='exportCSV(${JSON.stringify(active)}, ${JSON.stringify(group_expenses||[])}, "${from}", "${to}")'>
+    ⬇ Export CSV
+  </button>`;
+
+  el.innerHTML = html;
+}
+
+function exportCSV(rows, groupExp, from, to) {
+  const lines = ["Player,Weekday Sessions,Weekend Sessions,Weekday Cost,Weekend Cost,Total Cost"];
+  rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+    lines.push([r.name, r.weekday_sessions, r.weekend_sessions,
+      r.weekday_cost.toFixed(2), r.weekend_cost.toFixed(2),
+      (r.weekday_cost + r.weekend_cost).toFixed(2)].join(","));
+  });
+  lines.push("");
+  lines.push("Group Expenses (Unallocated)");
+  lines.push("Date,Description,Amount");
+  groupExp.forEach(e => lines.push(`${fmtDate(e.date)},${e.description},${e.amount.toFixed(2)}`));
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = `badminton_${from}_${to}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════
+function switchTab(btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + btn.dataset.screen).classList.add("active");
+  document.getElementById("content").scrollTop = 0;
+
+  if (btn.dataset.screen === "attendance") {
+    updateNumPlayersDropdown();
+    updateAttPlayerList();
+    loadSession();
+  }
+  if (btn.dataset.screen === "expenses") {
+    updateExpPlayerList();
+    loadRecentExpenses();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  UTILITY
+// ══════════════════════════════════════════════════════
+function showLoader(on) {
+  document.getElementById("loader").style.display = on ? "flex" : "none";
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ""; }, 2800);
+}
+</script>
+</body>
+</html>

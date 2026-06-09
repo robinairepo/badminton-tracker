@@ -1,0 +1,25 @@
+{
+  "name": "Shuttle Tracker",
+  "short_name": "Shuttle",
+  "description": "Badminton group attendance and expense tracker",
+  "start_url": "/badminton-tracker/",
+  "scope": "/badminton-tracker/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c1f2e",
+  "theme_color": "#1c1f2e",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
