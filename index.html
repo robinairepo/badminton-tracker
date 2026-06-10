@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Shuttle">
+<meta name="apple-mobile-web-app-title" content="Baddies">
 <meta name="theme-color" content="#1c1f2e">
 <link rel="manifest" href="manifest.json">
-<title>Baddies Tracker - V1</title>
+<title>Baddies Tracker - V2</title>
 <style>
 /* ══════════════════════════════════════════
    DESIGN TOKENS  — warmer dark with better contrast
@@ -294,7 +294,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- Config screen -->
 <div id="config-screen">
   <div class="cfg-logo">🏸</div>
-  <div class="cfg-title">Shuttle Tracker</div>
+  <div class="cfg-title">Baddies Tracker - V2</div>
   <p class="cfg-sub">Paste your Google Apps Script Web App URL to connect your Google Sheet.</p>
   <div style="width:100%;max-width:360px">
     <label>Apps Script Web App URL</label>
@@ -315,7 +315,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div id="header">
     <div class="logo">🏸</div>
     <div>
-      <div id="h1">Shuttle Tracker</div>
+      <div id="h1">Baddies Tracker - V2</div>
       <div class="sub" id="header-sub">Loading…</div>
     </div>
   </div>
@@ -381,6 +381,13 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div class="per-head-box" id="per-head-box" style="display:none">
           <span class="label">Per Head</span>
           <span class="value" id="per-head-amt">₹0</span>
+        </div>
+
+        <div class="form-row" style="margin-top:12px;margin-bottom:0">
+          <label>Paid By</label>
+          <select id="att-paid-by">
+            <option value="">— Select who paid —</option>
+          </select>
         </div>
       </div>
 
@@ -682,6 +689,13 @@ function updateNumPlayersDropdown() {
   for (let i = 1; i <= active.length; i++) {
     sel.innerHTML += `<option value="${i}" ${String(i) === cur ? "selected" : ""}>${i}</option>`;
   }
+  // Also refresh Paid By dropdown (preserve current selection)
+  const pb = document.getElementById("att-paid-by");
+  const curPb = pb.value;
+  pb.innerHTML = `<option value="">— Select who paid —</option>`;
+  active.forEach(p => {
+    pb.innerHTML += `<option value="${p.id}" ${p.id === curPb ? "selected" : ""}>${p.name}</option>`;
+  });
 }
 
 function updateAttPlayerList() {
@@ -754,6 +768,7 @@ async function loadSession() {
   // Uncheck existing checkboxes — never rebuild them here
   document.querySelectorAll("#att-players-list input[type=checkbox]").forEach(c => c.checked = false);
   document.getElementById("att-all-btn").textContent = "Select All";
+  document.getElementById("att-paid-by").value = "";
 
   showLoader(true);
   try {
@@ -761,6 +776,7 @@ async function loadSession() {
     if (session) {
       document.getElementById("att-amount").value      = session.amount;
       document.getElementById("att-num-players").value = session.num_players;
+      document.getElementById("att-paid-by").value = session.paid_by || "";
 
       document.querySelectorAll(".pill[data-type]").forEach(b => b.classList.remove("selected"));
       const matchPill = document.querySelector(`.pill[data-type="${session.cost_type}"]`);
@@ -792,12 +808,14 @@ async function saveSession() {
 
   const cost_type  = document.querySelector(".pill[data-type].selected")?.dataset.type || "Court";
   const cost_desc  = cost_type === "Other" ? document.getElementById("att-other-desc").value : cost_type;
+  const paid_by    = document.getElementById("att-paid-by").value;
   const chosenPids = [...document.querySelectorAll("#att-players-list input:checked")].map(c => c.value);
   if (chosenPids.length === 0) return showToast("Select at least one player", true);
+  if (!paid_by) return showToast("Select who paid", true);
 
   showLoader(true);
   try {
-    await api("saveSession", { date, num_players, cost_type, cost_desc, amount, players: chosenPids });
+    await api("saveSession", { date, num_players, cost_type, cost_desc, amount, paid_by, players: chosenPids });
     showToast("Session saved ✓");
   } catch(e) { showToast(e.message, true); }
   showLoader(false);

@@ -10,7 +10,7 @@ const SHEET_PLAY_LOG  = "PlayLog";
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   ensureSheet(ss, SHEET_PLAYERS,  ["id","name","status","added_date","deactivated_date"]);
-  ensureSheet(ss, SHEET_SESSIONS, ["session_id","date","num_players","cost_type","cost_desc","amount","per_head"]);
+  ensureSheet(ss, SHEET_SESSIONS, ["session_id","date","num_players","cost_type","cost_desc","amount","per_head","paid_by"]);
   ensureSheet(ss, SHEET_EXPENSES, ["expense_id","date","amount","description","player_ids","expense_scope"]);
   ensureSheet(ss, SHEET_PLAY_LOG, ["log_id","session_id","player_id","amount_owed"]);
   return ok("Setup complete");
@@ -87,7 +87,7 @@ function setPlayerStatus({ id, status }) {
 }
 
 // ── Sessions ──────────────────────────────────────────────────
-function saveSession({ date, num_players, cost_type, cost_desc, amount, players }) {
+function saveSession({ date, num_players, cost_type, cost_desc, amount, paid_by, players }) {
   // Use script lock to prevent duplicate writes from rapid calls
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -101,14 +101,14 @@ function saveSession({ date, num_players, cost_type, cost_desc, amount, players 
     deleteSessionByDate(ss, date);
 
     const sid = "S" + Date.now();
-    shS.appendRow([sid, date, num_players, cost_type, cost_desc, parseFloat(amount), parseFloat(per)]);
+    shS.appendRow([sid, date, num_players, cost_type, cost_desc, parseFloat(amount), parseFloat(per), paid_by || ""]);
 
     players.forEach(pid => {
       shL.appendRow(["L" + Date.now() + Math.random().toString(36).slice(2), sid, pid, parseFloat(per)]);
     });
 
     SpreadsheetApp.flush();
-    return ok({ session_id: sid, date, per_head: per });
+    return ok({ session_id: sid, date, per_head: per, paid_by: paid_by || "" });
   } finally {
     lock.releaseLock();
   }
@@ -138,7 +138,7 @@ function getSession({ date }) {
   const session  = sessions.find(r => r.date === date);
   if (!session) return ok(null);
   const logs = sheetRows(SHEET_PLAY_LOG).filter(r => r.session_id === session.session_id);
-  return ok({ ...session, players: logs.map(r => r.player_id) });
+  return ok({ ...session, paid_by: session.paid_by || "", players: logs.map(r => r.player_id) });
 }
 
 // ── Expenses ──────────────────────────────────────────────────
