@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Baddies">
 <meta name="theme-color" content="#1c1f2e">
 <link rel="manifest" href="manifest.json">
-<title>Baddies Tracker - V2</title>
+<title>Baddies Tracker - V3</title>
 <style>
 /* ══════════════════════════════════════════
    DESIGN TOKENS  — warmer dark with better contrast
@@ -294,7 +294,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- Config screen -->
 <div id="config-screen">
   <div class="cfg-logo">🏸</div>
-  <div class="cfg-title">Baddies Tracker - V2</div>
+  <div class="cfg-title">Baddies Tracker - V3</div>
   <p class="cfg-sub">Paste your Google Apps Script Web App URL to connect your Google Sheet.</p>
   <div style="width:100%;max-width:360px">
     <label>Apps Script Web App URL</label>
@@ -315,7 +315,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div id="header">
     <div class="logo">🏸</div>
     <div>
-      <div id="h1">Baddies Tracker - V2</div>
+      <div id="h1">Baddies Tracker - V3</div>
       <div class="sub" id="header-sub">Loading…</div>
     </div>
   </div>
@@ -948,94 +948,103 @@ async function generateReport() {
 function renderReport(result, from, to) {
   const el = document.getElementById("report-output");
   const { players: rows, group_expenses } = result;
-  const active = rows.filter(r => r.weekday_sessions > 0 || r.weekend_sessions > 0);
 
-  if (active.length === 0 && (!group_expenses || group_expenses.length === 0)) {
+  // Only show players who actually played
+  const played = rows
+    .filter(r => (r.weekday_sessions + r.weekend_sessions) > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (played.length === 0 && (!group_expenses || group_expenses.length === 0)) {
     el.innerHTML = `<div class="empty"><div class="ei">📊</div><p>No data for this period</p></div>`;
     return;
   }
 
-  const totalSession = active.reduce((s, r) => s + r.weekday_cost + r.weekend_cost, 0);
-  const totalGroup   = (group_expenses || []).reduce((s, e) => s + e.amount, 0);
-  const grandTotal   = totalSession + totalGroup;
+  const grandTotal = played.reduce((s, r) => s + r.weekday_cost + r.weekend_cost, 0);
 
-  let html = `
-    <div class="stat-row">
-      <div class="stat-box"><div class="s-label">Period</div><div style="font-size:13px;font-weight:700;color:var(--text)">${fmtDate(from)} – ${fmtDate(to)}</div></div>
-      <div class="stat-box"><div class="s-label">Group Total</div><div class="s-val c-orange">₹${grandTotal.toLocaleString('en-IN')}</div></div>
-    </div>`;
+  // ── Summary cards
+  let html = `<div class="stat-row">
+    <div class="stat-box">
+      <div class="s-label">Period</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text)">${fmtDate(from)} – ${fmtDate(to)}</div>
+    </div>
+    <div class="stat-box">
+      <div class="s-label">Total Spend</div>
+      <div class="s-val c-orange">₹${grandTotal.toLocaleString('en-IN')}</div>
+    </div>
+  </div>`;
 
-  // ── Section 1: Player-wise attendance + cost
-  if (active.length > 0) {
-    const sorted = [...active].sort((a, b) => a.name.localeCompare(b.name));
+  // ── Player summary table: Name | Weekdays | Weekends | Amount
+  if (played.length > 0) {
     html += `<div class="report-section-title">Player Summary</div>`;
     html += `<div class="rtable-wrap"><table class="rtable">
       <thead><tr>
         <th>Player</th>
-        <th class="num">WD</th>
-        <th class="num">WE</th>
-        <th class="num">WD ₹</th>
-        <th class="num">WE ₹</th>
-        <th class="num">Total ₹</th>
+        <th class="num">Weekdays</th>
+        <th class="num">Weekends</th>
+        <th class="num">Amount (₹)</th>
       </tr></thead><tbody>`;
-    sorted.forEach(r => {
+    played.forEach(r => {
       const total = r.weekday_cost + r.weekend_cost;
       html += `<tr>
         <td style="font-weight:600">${r.name}</td>
         <td class="num">${r.weekday_sessions}</td>
         <td class="num c-purple">${r.weekend_sessions}</td>
-        <td class="num c-teal">${r.weekday_cost.toFixed(0)}</td>
-        <td class="num c-purple">${r.weekend_cost.toFixed(0)}</td>
         <td class="num c-orange">${total.toFixed(0)}</td>
       </tr>`;
     });
-    html += `</tbody></table></div>`;
-  }
-
-  // ── Section 2: Incidental player expenses — pulled from play log costs vs session costs
-  // (Already baked into player totals, show a note)
-  html += `<div class="report-section-title" style="margin-top:14px">Group Expenses (Unallocated)</div>`;
-  if (!group_expenses || group_expenses.length === 0) {
-    html += `<div class="card"><p style="color:var(--muted);font-size:13px">No group expenses in this period</p></div>`;
-  } else {
-    let grpTotal = 0;
-    html += `<div class="rtable-wrap"><table class="rtable">
-      <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th></tr></thead><tbody>`;
-    group_expenses.sort((a,b) => a.date.localeCompare(b.date)).forEach(e => {
-      grpTotal += e.amount;
-      html += `<tr>
-        <td>${fmtDate(e.date)}</td>
-        <td>${e.description}</td>
-        <td class="num c-orange">₹${e.amount.toLocaleString('en-IN')}</td>
-      </tr>`;
-    });
-    html += `<tr style="background:var(--card2)">
-      <td colspan="2" style="font-weight:700">Total</td>
-      <td class="num c-orange" style="font-weight:800">₹${grpTotal.toLocaleString('en-IN')}</td>
+    // Totals row
+    const totalWD = played.reduce((s, r) => s + r.weekday_sessions, 0);
+    const totalWE = played.reduce((s, r) => s + r.weekend_sessions, 0);
+    html += `<tr style="background:var(--card2);font-weight:700">
+      <td>Total</td>
+      <td class="num">${totalWD}</td>
+      <td class="num c-purple">${totalWE}</td>
+      <td class="num c-orange">${grandTotal.toFixed(0)}</td>
     </tr>`;
     html += `</tbody></table></div>`;
   }
 
-  // ── Export button
-  html += `<button class="btn btn-ghost btn-full" style="margin-top:14px"
-    onclick='exportCSV(${JSON.stringify(active)}, ${JSON.stringify(group_expenses||[])}, "${from}", "${to}")'>
-    ⬇ Export CSV
-  </button>`;
+  // ── Group expenses
+  if (group_expenses && group_expenses.length > 0) {
+    const grpTotal = group_expenses.reduce((s, e) => s + e.amount, 0);
+    html += `<div class="report-section-title" style="margin-top:14px">Group Expenses (Unallocated)</div>`;
+    html += `<div class="rtable-wrap"><table class="rtable">
+      <thead><tr><th>Date</th><th>Description</th><th class="num">₹</th></tr></thead><tbody>`;
+    group_expenses.sort((a, b) => a.date.localeCompare(b.date)).forEach(e => {
+      html += `<tr>
+        <td>${fmtDate(e.date)}</td>
+        <td>${e.description}</td>
+        <td class="num c-orange">${parseFloat(e.amount).toFixed(0)}</td>
+      </tr>`;
+    });
+    html += `<tr style="background:var(--card2);font-weight:700">
+      <td colspan="2">Total</td>
+      <td class="num c-orange">${grpTotal.toFixed(0)}</td>
+    </tr></tbody></table></div>`;
+  }
+
+  // ── Export
+  html += `<button class="btn btn-ghost btn-full" style="margin-top:14px" onclick="exportCSV()">⬇ Export CSV</button>`;
 
   el.innerHTML = html;
+
+  // Store data for CSV export
+  window._reportData = { played, group_expenses: group_expenses || [], from, to };
 }
 
-function exportCSV(rows, groupExp, from, to) {
-  const lines = ["Player,Weekday Sessions,Weekend Sessions,Weekday Cost,Weekend Cost,Total Cost"];
-  rows.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
-    lines.push([r.name, r.weekday_sessions, r.weekend_sessions,
-      r.weekday_cost.toFixed(2), r.weekend_cost.toFixed(2),
-      (r.weekday_cost + r.weekend_cost).toFixed(2)].join(","));
+function exportCSV() {
+  const { played, group_expenses, from, to } = window._reportData || {};
+  if (!played) return showToast("Generate a report first", true);
+
+  const lines = ["Player,Weekdays Played,Weekends Played,Total Amount"];
+  played.forEach(r => {
+    const total = (r.weekday_cost + r.weekend_cost).toFixed(2);
+    lines.push([r.name, r.weekday_sessions, r.weekend_sessions, total].join(","));
   });
-  lines.push("");
-  lines.push("Group Expenses (Unallocated)");
-  lines.push("Date,Description,Amount");
-  groupExp.forEach(e => lines.push(`${fmtDate(e.date)},${e.description},${e.amount.toFixed(2)}`));
+  if (group_expenses.length > 0) {
+    lines.push("", "Group Expenses (Unallocated)", "Date,Description,Amount");
+    group_expenses.forEach(e => lines.push(`${fmtDate(e.date)},${e.description},${parseFloat(e.amount).toFixed(2)}`));
+  }
 
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
   const url  = URL.createObjectURL(blob);
