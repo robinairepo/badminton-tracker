@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Baddies">
 <meta name="theme-color" content="#1c1f2e">
 <link rel="manifest" href="manifest.json">
-<title>Baddies Tracker - V3</title>
+<title>Baddies Tracker - V4</title>
 <style>
 /* ══════════════════════════════════════════
    DESIGN TOKENS  — warmer dark with better contrast
@@ -281,6 +281,14 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   display: none;
 }
 
+/* ── Settings button ── */
+#settings-btn {
+  margin-left: auto; background: none; border: none;
+  color: var(--muted); font-size: 20px; cursor: pointer;
+  padding: 6px; border-radius: 8px; transition: color .15s;
+}
+#settings-btn:active { color: var(--accent); }
+
 /* ── Section separators in reports ── */
 .report-section-title {
   font-size: 12px; font-weight: 700; letter-spacing: .8px;
@@ -294,7 +302,7 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 <!-- Config screen -->
 <div id="config-screen">
   <div class="cfg-logo">🏸</div>
-  <div class="cfg-title">Baddies Tracker - V3</div>
+  <div class="cfg-title">Baddies Tracker - V4</div>
   <p class="cfg-sub">Paste your Google Apps Script Web App URL to connect your Google Sheet.</p>
   <div style="width:100%;max-width:360px">
     <label>Apps Script Web App URL</label>
@@ -315,9 +323,10 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   <div id="header">
     <div class="logo">🏸</div>
     <div>
-      <div id="h1">Baddies Tracker - V3</div>
+      <div id="h1">Baddies Tracker - V4</div>
       <div class="sub" id="header-sub">Loading…</div>
     </div>
+    <button id="settings-btn" onclick="resetApiUrl()" title="Change API URL">⚙️</button>
   </div>
 
   <div id="content">
@@ -1079,6 +1088,13 @@ async function switchTab(btn) {
 // ══════════════════════════════════════════════════════
 //  UTILITY
 // ══════════════════════════════════════════════════════
+function resetApiUrl() {
+  if (confirm("Change the Apps Script URL?\nThis will reload the app.")) {
+    localStorage.removeItem("bt_api_url");
+    location.reload();
+  }
+}
+
 function showLoader(on) {
   document.getElementById("loader").style.display = on ? "flex" : "none";
 }
